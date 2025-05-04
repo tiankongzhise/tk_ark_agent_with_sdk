@@ -1,0 +1,11 @@
+[project]
+name = "tk-ark-agent-with-sdk"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "tk-base-utils>=0.1.0",
+    "tk-db-tool>=0.1.2",
+    "volcengine-python-sdk[ark]>=2.0.1",
+]
