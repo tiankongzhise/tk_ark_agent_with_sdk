@@ -1,15 +1,15 @@
 
-MODEL_MAPPING = {
-    'DOUBAO-THINKING-PRO': 'ep-20250427171722-5fb9c',
-    'DEEPSEEK-V3': 'ep-20250427171507-l9cgg',
-    'DEEPSEEK-R1': 'ep-20250427171252-8kdjr',
-    'DOUBAO-VISION-PRO': 'ep-20250427172000-zbqrb',
-}
 
-DEFINE_MODEL = 'DOUBAO-THINKING-PRO'
 
-DEFINE_PROMPT = """
-你是一个IP数据库专家，负责将用户提供的IP称呼与角色组合规范化为标准格式。请按以下规则处理输入数据：  
+
+AI_MODEL = 'DEEPSEEK-V3'
+
+SYSTEM_CONTENT = """
+你是一个IP数据库专家，负责将用户提供的IP称呼与角色组合规范化为标准格式。
+"""
+
+PROMPT = """
+请按以下规则处理输入数据：  
 
 <输入格式说明>  
 输入数据为多行文本，每行格式为：  
@@ -82,9 +82,19 @@ DEFINE_PROMPT = """
 - 数组元素顺序与输入顺序完全一致  
 """
 
-DATA_FILE_PATH = '$/data/自由行数据.xlsx'
-TEMP_RESULT_FILE_PATH = '$/data/temp/temp_result.txt'
-ERR_RESULT_FILE_PATH = '$/data/err/err_result.txt'
+SOURCE_DATA_FILE_PATH = '$/src/tk_ark_agent_with_sdk/data/成都世界线自由行数据.xlsx'
+TEMP_RSP_DIR_PATH = '$/src/tk_ark_agent_with_sdk/data/temp/'
+TEMP_RSP_FILE_NAME = 'temp_rsp.txt'
+FAIL_RSP_DIR_PATH = '$/src/tk_ark_agent_with_sdk/data/fail/'
+FAIL_RSP_FILE_NAME = 'fail_rsp.txt'
+
 MAX_CONCURRENT_TASKS = 100
 CHAT_BATCH_SIZE = 100 
-STREAM = True
+STREAM = false
+PRINT_CONSOLE = false
+
+[AI_MODEL_MAPPING] 
+    DOUBAO-THINKING-PRO = 'ep-20250427171722-5fb9c'
+    DEEPSEEK-V3 = 'ep-20250427171507-l9cgg'
+    DEEPSEEK-R1 = 'ep-20250427171252-8kdjr'
+    DOUBAO-VISION-PRO = 'ep-20250427172000-zbqrb'

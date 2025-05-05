@@ -49,5 +49,37 @@ class Curd(BaseCurd):
         except Exception as e:
             return {'status':'error','operation':'add','error':str(e)}
 
-
-
+    def _create_update_data(self,unique_index:str,rsp:dict)->dict:
+        key_id = self.query_mapping[unique_index]['key_id']
+        
+        self.query_mapping[unique_index]['ai_rsp'].update(rsp['ai_rsp'])
+        
+        new_ai_rsp = self.query_mapping[unique_index]['ai_rsp']
+        
+        return {'key_id':key_id,'ai_rsp':new_ai_rsp}
+        
+    def add_or_update_table_banch(self,table_name:str,data:list[dict|Type[IpInfoTable]|Type[BaseModel]])->bool:
+        try:
+            formated_data = [self._format_data(item) for item in data]
+            update_data = []
+            insert_data = []
+            with get_session() as session:
+                
+                for item in formated_data:
+                    unique_index = f"{item['source_ip_query']}-{item['source_character_query']}"
+                    
+                    if self.query_mapping.get(unique_index,{}).get('ai_rsp'):
+                        update_data.append(self._create_update_data(unique_index,item))
+                    else:
+                        insert_data.append(item)
+                        
+                if insert_data:
+                    self.bulk_insert_ignore_in_chunks(table_name,insert_data)
+                    
+                if update_data:
+                    session.bulk_update_mappings(table_name,update_data)
+            return True
+                        
+        except Exception as e:
+            message.error(f"add_or_update_table_banch err:{e}")
+            return False

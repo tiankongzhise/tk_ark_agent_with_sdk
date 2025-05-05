@@ -45,7 +45,7 @@ class AgentWithSdk(object):
                 f"Invalid ai_model:{self.ai_model},ai_model must be one of {list(self.ai_model_mapping.keys())}"
             )
         message.info("----- agent run request -----")
-        chat_item = client.chat.completions.create(
+        chat_item = self.client.chat.completions.create(
             model=model_id,
             messages=[
                 {"role": "system", "content": self.system_content},
@@ -63,7 +63,7 @@ class AgentWithSdk(object):
                     continue
                 rsp += chunk.choices[0].delta.content
                 if self.print_console:
-                    message.info(chunk.choices[0].delta.content, end="")
+                    message.print(chunk.choices[0].delta.content, end="")
         else:
             rsp = chat_item.choices[0].message.content
             if self.print_console:
@@ -131,7 +131,7 @@ class SyncAgentWithSdk(AgentWithSdk):
                     continue
                 rsp += chunk.choices[0].delta.content
                 if self.print_console:
-                    message.info(chunk.choices[0].delta.content, end="")
+                    message.print(chunk.choices[0].delta.content, end="")
         else:
             rsp = chat_item.choices[0].message.content
             if self.print_console:
