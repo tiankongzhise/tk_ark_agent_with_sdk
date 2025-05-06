@@ -1,15 +1,16 @@
-from typing import Callable
+from typing import Callable,Type,TypeVar
 from pathlib import Path
 from datetime import datetime
 
 
 from ..database.models import IpInfoTable
 
+
 from ..message import message
 
 import multiprocessing
 
-
+T = TypeVar("T")
 def fomart_agent_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
     return [
         {
@@ -20,6 +21,16 @@ def fomart_agent_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
         for item in rsp
     ]
 
+def fomart_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
+    return [
+        {
+            "source_ip_query": item["IP称呼"],
+            "source_character_query": item["角色名称"],
+            "ai_rsp": item["IP官方名称"],
+            "ai_model": ai_model
+        }
+        for item in rsp
+    ]
 
 class MultiProcessingSave(object):
     TERMINATION_SENTINEL = None
@@ -28,23 +39,23 @@ class MultiProcessingSave(object):
         self,
         temp_rsp_save_func: Callable,
         fail_rsp_save_func: Callable,
-        db_save_func: Callable,
-        temp_rsp_save_dir: Path,
+        db_curd_class:Type[T] ,
+        temp_rsp_dir_path: Path,
         temp_rsp_save_file_name: str,
-        fail_rsp_save_dir: Path,
+        fail_rsp_dir_path: Path,
         fail_rsp_save_file_name: str,
         db_model: IpInfoTable,
         runtime: str | None = None,
     ):
         self.temp_rsp_save_func = temp_rsp_save_func
         self.fail_rsp_save_func = fail_rsp_save_func
-        self.db_save_func = db_save_func
-        self.temp_rsp_save_dir = temp_rsp_save_dir
+        self.db_curd_class = db_curd_class
+        self.temp_rsp_save_dir = temp_rsp_dir_path
         self.temp_rsp_save_file_name = temp_rsp_save_file_name
-        self.fail_rsp_save_dir = fail_rsp_save_dir
+        self.fail_rsp_save_dir = fail_rsp_dir_path
         self.fail_rsp_save_file_name = fail_rsp_save_file_name
         self.db_model = db_model
-        self.runtime = runtime or datetime.now().strftime("%Y%m%d%_H%M%S")
+        self.runtime = runtime or datetime.now().strftime("%Y%m%d_%H%M%S")
         self.queue = multiprocessing.Queue()
 
     def process_start(self):
@@ -64,6 +75,7 @@ class MultiProcessingSave(object):
     def run(self):
         inserted_count = 0
         fail_count = 0
+        db_client = self.db_curd_class()
         while True:
             try:
                 item = self.queue.get()
@@ -75,7 +87,7 @@ class MultiProcessingSave(object):
                     self.temp_rsp_save_file_name,
                     item,
                 )
-                db_save_result = self.db_save_func(self.db_model, item)
+                db_save_result = db_client.add_or_update_table_banch(self.db_model, item)
                 if db_save_result:
                     inserted_count += len(item)
                 else:
@@ -90,5 +102,5 @@ class MultiProcessingSave(object):
                 message.error(e)
             finally:
                 message.info(
-                    f"从{self.runtime}开始多线程写入数据完毕,共{inserted_count}条,失败{fail_count}条"
+                    f"从{self.runtime}开始多线程写入数据完毕,共成功{inserted_count}条,失败{fail_count}条"
                 )

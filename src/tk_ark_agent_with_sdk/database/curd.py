@@ -58,13 +58,13 @@ class Curd(BaseCurd):
         
         return {'key_id':key_id,'ai_rsp':new_ai_rsp}
         
-    def add_or_update_table_banch(self,table_name:str,data:list[dict|Type[IpInfoTable]|Type[BaseModel]])->bool:
+    def add_or_update_table_banch(self,table_name:IpInfoTable,data:list[dict|Type[IpInfoTable]|Type[BaseModel]])->bool:
         try:
             formated_data = [self._format_data(item) for item in data]
             update_data = []
             insert_data = []
             with get_session() as session:
-                
+                self._init_query_mapping(table_name)                
                 for item in formated_data:
                     unique_index = f"{item['source_ip_query']}-{item['source_character_query']}"
                     
@@ -75,9 +75,11 @@ class Curd(BaseCurd):
                         
                 if insert_data:
                     self.bulk_insert_ignore_in_chunks(table_name,insert_data)
+                    message.info(f"insert {len(insert_data)} rows")
                     
                 if update_data:
                     session.bulk_update_mappings(table_name,update_data)
+                    message.info(f"update {len(update_data)} rows")
             return True
                         
         except Exception as e:

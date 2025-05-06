@@ -34,6 +34,10 @@ def write_fail_rsp(dir_path:Path,file_name:str,rsp:list):
     """
     try:
         file_path = create_file_name_by_rsp(dir_path / file_name,rsp)
+        #  创建文件
+        if not file_path.exists():
+            file_path.touch()
+            
         with open(file_path,'w',encoding='utf-8') as f:
             f.write('\n'.join(rsp))
         return file_path.name
@@ -46,6 +50,8 @@ def write_rsp(dir_path:Path,file_name:str,rsp:list):
     """
     try:
         file_path = create_file_name_by_rsp(dir_path / file_name,rsp)
+        if not file_path.exists():
+            file_path.touch()
         with open(file_path,'w',encoding='utf-8') as f:
             f.write('\n'.join(rsp))
         return file_path.name

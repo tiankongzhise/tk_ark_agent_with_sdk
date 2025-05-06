@@ -8,11 +8,13 @@ from tk_base_utils.file import get_abs_dir_path
 from ...core import SyncAgentWithSdk
 from ...message import message
 from ...database import Curd,IpInfoTable
-from ...utils import MultiProcessingSave
+from ...utils import MultiProcessingSave,fomart_agent_rsp
 from ...file import write_fail_rsp, write_rsp
+from ...process_bar  import ProcessBar
 
 import pandas as pd
-
+import asyncio
+import json
 
 load_dotenv()
 
@@ -49,16 +51,16 @@ async def run():
 
     db_client = Curd()
     
-    temp_rsp_save_dir = get_abs_dir_path(toml_config.get("TEMP_RSP_SAVE_DIR"))
-    fail_rsp_save_dir = get_abs_dir_path(toml_config.get("FAIL_RSP_SAVE_DIR"))
+    temp_rsp_dir_path = get_abs_dir_path(toml_config.get("TEMP_RSP_DIR_PATH"))
+    fail_rsp_dir_path = get_abs_dir_path(toml_config.get("FAIL_RSP_DIR_PATH"))
 
     mt_process = MultiProcessingSave(
         temp_rsp_save_func=write_rsp,
         fail_rsp_save_func=write_fail_rsp,
-        db_save_func=db_client.add_or_update_table_banch,
-        temp_rsp_save_dir=temp_rsp_save_dir,
+        db_curd_class=Curd,
+        temp_rsp_dir_path=temp_rsp_dir_path,
         temp_rsp_save_file_name=toml_config.get("TEMP_RSP_SAVE_FILE_NAME"),
-        fail_rsp_save_dir=fail_rsp_save_dir,
+        fail_rsp_dir_path=fail_rsp_dir_path,
         fail_rsp_save_file_name=toml_config.get("FAIL_RSP_SAVE_FILE_NAME"),
         db_model=IpInfoTable,
         runtime=toml_config.get("RUNTIME"),
@@ -74,24 +76,34 @@ async def run():
     character = source_data["角色"].tolist()
     ip_role_pairs = [f"{i}-{j}" for i, j in zip(ip, character)]
 
-    test_ip_role_pairs = ip_role_pairs[:10]
+    test_ip_role_pairs = ip_role_pairs[:2]
 
     sync_agent = init_agent(toml_config)
 
-    tasks = []
+    
     mt_process.process_start()
     
-    for i in range(0,len(test_ip_role_pairs),chat_batch_size):
-        query_ip_role_pairs = test_ip_role_pairs[i:i+chat_batch_size]
-        prompt = toml_config.get("PROMPT").replace(
-        "{{IP_ROLE_PAIRS}}", "\n".join(query_ip_role_pairs)
-    )
-        for ai_model in ai_models:
+    for ai_model in ai_models:
+        tasks = []
+        for i in range(0,len(test_ip_role_pairs),chat_batch_size):
+            query_ip_role_pairs = test_ip_role_pairs[i:i+chat_batch_size]
+            prompt = toml_config.get("PROMPT").replace(
+            "{{IP_ROLE_PAIRS}}", "\n".join(query_ip_role_pairs)
+        )
             sync_agent.set_ai_model(ai_model)
             sync_agent.set_prompt(prompt)
             task = sync_agent.run()
             tasks.append(task)
-            
+        total_tasks = len(tasks)  
+        process_bar = ProcessBar(total=total_tasks,desc="任务完成情况...")
+        process_bar.start()
+        for completed in asyncio.as_completed(tasks):
+            result = await completed
+            result_json = json.dumps(result)
+            fomated_result = fomart_agent_rsp(result_json,ai_model)
+            print([fomated_result])
+            if result:
+                mt_process.sent_rsp(fomated_result)
+            process_bar.update_bar(1)
             
         
-    message.info(rsp)
