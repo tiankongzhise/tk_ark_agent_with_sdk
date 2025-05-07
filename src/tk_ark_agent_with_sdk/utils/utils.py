@@ -7,6 +7,7 @@ from ..database.models import IpInfoTable
 
 
 from ..message import message
+import re
 
 import multiprocessing
 
@@ -31,6 +32,16 @@ def fomart_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
         }
         for item in rsp
     ]
+    
+def fomart_rsp_str(rsp:str):
+    if 'json' in rsp:
+        pattern = r'```json\n([\s\S]*?)```'
+        result = re.findall(pattern, rsp)[0].strip()
+        return result
+    
+    return rsp
+        
+
 
 class MultiProcessingSave(object):
     TERMINATION_SENTINEL = None

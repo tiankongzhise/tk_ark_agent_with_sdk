@@ -170,11 +170,13 @@ class Run(SyncAgentWithSdk):
         for complete_task in asyncio.as_completed(tasks):
             rsp = await complete_task
             try:
+                print(f'rsp:{rsp}')
                 rsp_json = json.loads(rsp)
                 fomated_rsp = fomart_rsp(rsp_json,self.ai_model)
             except Exception as e:
                 print(e)
                 continue
+            print(f'{self.ai_model} get rsp,{fomated_rsp}')
             self.queue.put(fomated_rsp)
         self.queue.put(self.TERMINATION_SENTINEL)
         self.process.join()

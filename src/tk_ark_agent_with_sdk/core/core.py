@@ -77,9 +77,10 @@ class SyncAgentWithSdk(AgentWithSdk):
         self.system_content: str | None = kwargs.get("system_content")
         self.prompt: str | None = kwargs.get("prompt")
         self.ai_model: str | None = kwargs.get("ai_model")
-        self.ai_model_mapping: str | None = kwargs.get("ai_model_mapping")
+        self.ai_model_mapping: dict | None = kwargs.get("ai_model_mapping")
         self.stream: bool = kwargs.get("stream", False)
         self.print_console: bool = kwargs.get("print_console", False)
+        self.prompt_template: str | None = kwargs.get("prompt_template")
         # 初始化Ark客户端，从环境变量中读取您的API Key
         self.client = AsyncArk(
             api_key=os.environ.get("ARK_API_KEY"),
