@@ -1,5 +1,5 @@
 from pydantic import BaseModel,Field
-
+from typing import Optional
 
 class AiRsp(BaseModel):
     ai_model: str
@@ -43,4 +43,5 @@ class Response(BaseModel):
 class RspResult(BaseModel):
     status:str
     message:str
-    data:list[Response]|str
+    data:list[Response] = Field(default_factory=list)
+    fail_data:Optional[str] = Field(default=None)

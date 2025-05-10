@@ -35,7 +35,7 @@ class SyncArkAgent(SyncAgentWithSdk):
         prompt_template = prompt_template.replace("{{IP_ROLE_PAIRS}}", "\n".join(ip_role_pairs))
         super().set_prompt(prompt_template)
     
-    async def run(self,ip_role_pairs:list[str],ai_model:str|None = None):
+    async def run(self,ip_role_pairs:list[str],ai_model:str|None = None) -> RspResult:
         self.set_agent_setting()
         if ai_model: 
             self.set_ai_model(ai_model)
@@ -52,4 +52,4 @@ class SyncArkAgent(SyncAgentWithSdk):
                 raise ValueError(f"rsp_dict is not a list or dict:{rsp_dict}") 
             return RspResult(data=response,message="success",status="success")
         except Exception as e:
-            return RspResult(data=self.prompt,message=str(e),status="fail")
+            return RspResult(fail_data=rsp+f'_@#ai_model={ai_model}',message=str(e),status="fail")

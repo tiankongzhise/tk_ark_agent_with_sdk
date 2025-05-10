@@ -1,10 +1,11 @@
-from typing import Callable,Type,TypeVar
+from typing import Callable, Type, TypeVar
 from pathlib import Path
 from datetime import datetime
 
 
-from ..database.models import IpInfoTable
-
+from ..database import Curd, SqlAlChemyBase
+from ..file import write_rsp, write_fail_rsp
+from ..models import RspResult
 
 from ..message import message
 import re
@@ -12,6 +13,8 @@ import re
 import multiprocessing
 
 T = TypeVar("T")
+
+
 def fomart_agent_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
     return [
         {
@@ -22,25 +25,26 @@ def fomart_agent_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
         for item in rsp
     ]
 
+
 def fomart_rsp(rsp: list[dict], ai_model: str) -> list[dict]:
     return [
         {
             "source_ip_query": item["IP称呼"],
             "source_character_query": item["角色名称"],
             "ai_rsp": item["IP官方名称"],
-            "ai_model": ai_model
+            "ai_model": ai_model,
         }
         for item in rsp
     ]
-    
-def fomart_rsp_str(rsp:str):
-    if 'json' in rsp:
-        pattern = r'```json\n([\s\S]*?)```'
+
+
+def fomart_rsp_str(rsp: str):
+    if "json" in rsp:
+        pattern = r"```json\n([\s\S]*?)```"
         result = re.findall(pattern, rsp)[0].strip()
         return result
-    
+
     return rsp
-        
 
 
 class MultiProcessingSave(object):
@@ -48,24 +52,20 @@ class MultiProcessingSave(object):
 
     def __init__(
         self,
-        temp_rsp_save_func: Callable,
-        fail_rsp_save_func: Callable,
-        db_curd_class:Type[T] ,
-        temp_rsp_dir_path: Path,
-        temp_rsp_save_file_name: str,
-        fail_rsp_dir_path: Path,
-        fail_rsp_save_file_name: str,
-        db_model: IpInfoTable,
+        temp_rsp_file_path: Path,
+        fail_rsp_file_path: Path,
+        db_table: Type[SqlAlChemyBase],
+        temp_rsp_save_func: Callable = write_rsp,
+        fail_rsp_save_func: Callable = write_fail_rsp,
+        db_curd_class: Type[T] = Curd,
         runtime: str | None = None,
     ):
+        self.temp_rsp_file_path = temp_rsp_file_path
+        self.fail_rsp_file_path = fail_rsp_file_path
         self.temp_rsp_save_func = temp_rsp_save_func
         self.fail_rsp_save_func = fail_rsp_save_func
         self.db_curd_class = db_curd_class
-        self.temp_rsp_save_dir = temp_rsp_dir_path
-        self.temp_rsp_save_file_name = temp_rsp_save_file_name
-        self.fail_rsp_save_dir = fail_rsp_dir_path
-        self.fail_rsp_save_file_name = fail_rsp_save_file_name
-        self.db_model = db_model
+        self.db_table = db_table
         self.runtime = runtime or datetime.now().strftime("%Y%m%d_%H%M%S")
         self.queue = multiprocessing.Queue()
 
@@ -89,26 +89,33 @@ class MultiProcessingSave(object):
         db_client = self.db_curd_class()
         while True:
             try:
-                item = self.queue.get()
+                item: RspResult = self.queue.get()
                 if item is self.TERMINATION_SENTINEL:
                     message.info("Terminating")
                     break
-                self.temp_rsp_save_func(
-                    self.temp_rsp_save_dir / self.runtime,
-                    self.temp_rsp_save_file_name,
-                    item,
-                )
-                db_save_result = db_client.add_or_update_table_banch(self.db_model, item)
-                if db_save_result:
-                    inserted_count += len(item)
-                else:
+                if item.status == "fail":
                     self.fail_rsp_save_func(
-                        self.fail_rsp_save_dir / self.runtime,
-                        self.fail_rsp_save_file_name,
-                        item,
+                        self.fail_rsp_file_path.parent / self.runtime,
+                        self.fail_rsp_file_path.name,
+                        item.data,
                     )
-                    fail_count += len(item)
+                else:
+                    data = [temp.model_dump() for temp in item.data]
+                    self.temp_rsp_save_func(
+                        self.temp_rsp_file_path.parent / self.runtime,
+                        self.temp_rsp_file_path.name,
+                        data,
+                    )
+                    db_save_result = db_client.bulk_insert_ignore_in_chunks(
+                        self.db_table, data
+                    )
+                    inserted_count += len(db_save_result)
             except Exception as e:
+                self.fail_rsp_save_func(
+                    self.fail_rsp_file_path.parent / self.runtime,
+                    self.fail_rsp_file_path.name,
+                    data,
+                )
                 fail_count += len(item)
                 message.error(e)
             finally:

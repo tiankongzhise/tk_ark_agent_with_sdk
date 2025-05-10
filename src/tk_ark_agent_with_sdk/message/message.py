@@ -3,5 +3,4 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 message.set_message_handler(logger)
